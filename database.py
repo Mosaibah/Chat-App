@@ -21,7 +21,6 @@ def hash_password(password):
 def check_password(hashed_password, user_password):
     return bcrypt.checkpw(user_password.encode(), hashed_password)
 
-
 def register_user(username, password):
     hashed_password = hash_password(password)
     try:
@@ -33,9 +32,9 @@ def register_user(username, password):
         conn.commit()
     except sqlite3.IntegrityError:
         print("Username already exists.")
+        return False
     finally:
         conn.close()
-
 
 def user_login(username, password):
     try:

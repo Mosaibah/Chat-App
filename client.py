@@ -7,6 +7,7 @@ import config
 import database
 import sys
 
+username = ""
 
 def authentication():
     ## list of actions (login, signup)
@@ -16,6 +17,7 @@ def authentication():
     print("1. Login")
     print("2. Signup")
     action = input('')
+    global username 
     if action == "1":
         print("yes its login")
         username = input("Username: ")
@@ -29,6 +31,7 @@ def authentication():
         
     elif action == "2":
         print("signup yes")
+
         username = input("Username: ")
         password = input("Password: ")
         if database.register_user(username, password):
@@ -99,11 +102,11 @@ def send_messages():
     while True:
         message = input('')
         if message:
-            encrypted_message = aes_cipher.encrypt(f'{nickname}: {message}')
+            encrypted_message = aes_cipher.encrypt(f'{username}: {message}')
             client.send(encrypted_message)
 
 
-nickname = input("Choose your nickname: ")
+# nickname = input("Choose your nickname: ")
 
 receive_thread = threading.Thread(target=receive_messages)
 receive_thread.start()
