@@ -1,2 +1,2 @@
-SERVER = '127.0.0.1'
-PORT = 65433
+SERVER = 'localhost'
+PORT = 8089
