@@ -6,43 +6,35 @@ import base64
 import config
 import database
 import sys
+import requests
+from urlextract import URLExtract
 
 username = ""
 
+
 def authentication():
-    ## list of actions (login, signup)
-    ## switch
-    ## call db
     print("Please select action")
     print("1. Login")
     print("2. Signup")
     action = input('')
-    global username 
+    global username
     if action == "1":
-        print("yes its login")
         username = input("Username: ")
         password = input("Password: ")
         if database.user_login(username, password):
-            print("Login succssfully")
+            print("Login successfully")
         else:
             print("wrong username or password")
             sys.exit(0)
-
-        
     elif action == "2":
-        print("signup yes")
-
         username = input("Username: ")
         password = input("Password: ")
         if database.register_user(username, password):
-            print("signed up succssfully, and loged in")
+            print("signed up successfully, and logged in")
             return True
-        
     else:
-        print("exit please, we dont like you :(")
+        print("exit please, we don't like you :(")
         sys.exit(0)
-
-
 
 
 def generate_rsa_keys():
@@ -67,16 +59,48 @@ class AESCipher:
         cipher = AES.new(self.key, AES.MODE_EAX, nonce)
         return cipher.decrypt_and_verify(ciphertext, tag).decode('utf-8')
 
+# Malicious link to test the is_malicions function,
+# probably shouldn't click on it though ;)
+# http://onlineshopnow.site/
+def is_malicious(url):
+    url_scan_endpoint = "https://www.virustotal.com/api/v3/urls"
+    headers = {
+        "x-apikey": config.VIRUSTOTAL_API_KEY
+    }
+    data = {
+        "url": url
+    }
+
+    # Sending the URL for scanning
+    response = requests.post(url_scan_endpoint, headers=headers, data=data)
+    result = response.json()
+
+    if 'data' in result and 'id' in result['data']:
+        analysis_id = result['data']['id']
+        analysis_endpoint = f"https://www.virustotal.com/api/v3/analyses/{analysis_id}"
+
+        # Fetching the analysis results
+        analysis_response = requests.get(analysis_endpoint, headers=headers)
+        analysis_result = analysis_response.json()
+
+        if 'data' in analysis_result and 'attributes' in analysis_result['data']:
+            analysis_stats = analysis_result['data']['attributes'].get('stats', {})
+
+            malicious_count = analysis_stats.get('malicious', 0)
+
+            if malicious_count > 0:
+                return True
+    return False
+
+
 print("*************** Welcome to our chat app ***************")
 authentication()
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((config.SERVER, config.PORT))
 
-
 private_key, public_key = generate_rsa_keys()
 client.send(public_key)
-
 
 encrypted_aes_key = client.recv(1024)
 private_key_rsa = RSA.import_key(private_key)
@@ -102,11 +126,20 @@ def send_messages():
     while True:
         message = input('')
         if message:
-            encrypted_message = aes_cipher.encrypt(f'{username}: {message}')
-            client.send(encrypted_message)
+            # Using urlextract to find URLs in the message
+            extractor = URLExtract()
+            urls = extractor.find_urls(message)
+            malicious_url = False
+            for url in urls:
+                if is_malicious(url):
+                    print(f"Warning: The URL {url} is malicious! It won't be sent to the user.")
+                    malicious_url = True
+                    break
 
+            if not malicious_url:
+                encrypted_message = aes_cipher.encrypt(f'{username}: {message}')
+                client.send(encrypted_message)
 
-# nickname = input("Choose your nickname: ")
 
 receive_thread = threading.Thread(target=receive_messages)
 receive_thread.start()
